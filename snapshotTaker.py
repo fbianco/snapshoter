@@ -37,7 +37,9 @@
 
 
     \section Updates
-
+    
+    2013-08-07:
+        v.1.1 : fbianco : added continue on errors
     2009-04-30
         v.1.0 : fbianco : First version
     
@@ -95,6 +97,7 @@ class SnapshoterWindow(Qt.QMainWindow) :
                             Qt.SIGNAL("clicked()"), self.selectFile )
     
         self.autoStart = Qt.QCheckBox()
+        self.continueOnError = Qt.QCheckBox()
     
         layout.addRow(_tr("Start/Stop"), self.startButton)
         separator = Qt.QFrame()
@@ -104,6 +107,7 @@ class SnapshoterWindow(Qt.QMainWindow) :
         layout.addRow(_tr('Save path'), self.snapshotName)
         layout.addRow(_tr('Change path'), self.changeSnapshotNameButton)
         layout.addRow(_tr('Autostart'), self.autoStart )
+        layout.addRow(_tr('Continue on error'), self.continueOnError)
     
         self.createActions()
         self.createTrayIcon()
@@ -168,7 +172,9 @@ class SnapshoterWindow(Qt.QMainWindow) :
             "snapshotName", Qt.QVariant(Qt.QDir.home().path()) ).toString() )
     
         self.restoreGeometry( settings.value( "geometry" ).toByteArray() )
-    
+        self.continueOnError.setChecked( settings.value( "continueOnError",
+                                    Qt.QVariant('False')).toBool())
+        
         autoStart = settings.value(
             "autoStart", Qt.QVariant('False')).toBool()
         self.autoStart.setChecked( autoStart )
@@ -184,6 +190,8 @@ class SnapshoterWindow(Qt.QMainWindow) :
         settings.setValue("interval", Qt.QVariant(self.intervalSpinBox.value()))
         settings.setValue("snapshotName", Qt.QVariant(self.snapshotName.text()))
         settings.setValue("autoStart", Qt.QVariant(self.autoStart.isChecked()))
+        settings.setValue("continueOnError", Qt.QVariant(
+                                            self.continueOnError.isChecked()))
         settings.setValue("geometry", Qt.QVariant(self.saveGeometry()) )
     
     
@@ -261,13 +269,19 @@ class SnapshoterWindow(Qt.QMainWindow) :
         if DEBUG: print "Try to save snapshot to %s. Result %s" \
                             % (self.snapshotName.text(),ok)
     
-        if not ok :
+        if not ok and not self.continueOnError.isChecked() :
             self.trayIcon.showMessage ( _tr('Error'),
                     _tr('The snapshot cannot be saved under %s.\n' \
                         'Snapshoter will be stopped.') \
                         % self.snapshotName.text(), Qt.QSystemTrayIcon.Critical)
             self.startButton.setChecked( False )
             self.toggleSnapshoter()
+
+        elif not ok:
+           self.trayIcon.showMessage ( _tr('Error'),
+                 _tr('The snapshot cannot be saved under %s.') \
+                      % self.snapshotName.text(),
+                 Qt.QSystemTrayIcon.Warning)
 
 
 # Only start an application if we are __main__
